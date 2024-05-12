@@ -3,39 +3,73 @@ import {
   Elements,
   LinkAuthenticationElement,
   PaymentElement,
+  useElements,
+  useStripe,
 } from "@stripe/react-stripe-js";
+import { STRIPE_PUBLISH_KEY } from "../../config";
+import { useState } from "react";
 
-const stripe = loadStripe('pk_test_51P0QFESDeBsltlDPDhGjWRCzzAKu0DAWIuYQ6Fj54AY5iunByTj7ZV0Edxjzvo0doSs9hpelTHYcfFp2NrUtM8Fd00BpGQGgo5');
+const stripe = loadStripe(STRIPE_PUBLISH_KEY);
 
 // Customize the appearance of Elements using the Appearance API.
 const appearance = {/* ... */ };
 
 // Enable the skeleton loader UI for the optimal loading experience.
 const loader = 'auto';
-
+const options = {
+  mode: 'setup',
+  currency: 'usd',
+};
 export default ({ clientSecret }) => {
 
-  console.log({ clientSecret })
   return < Elements stripe={stripe} options={{ clientSecret, appearance, loader }}>
     <CheckoutForm />
   </Elements >
 
 }
 
+
 function CheckoutForm() {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!stripe || !elements) {
+      // Stripe.js has not loaded yet. Make sure to disable
+      // form submission until Stripe.js has loaded.
+      return;
+    }
+    const {token,error} = await stripe.createToken('account',elements.getElement('payment')
+  )
+    console.log(error, paymentMethod)
+
+    if (error) {
+      setError(error.message);
+    } else {
+      try {
+        // const { data } = await axios.post('/api/submit-payment', {
+        //   paymentMethodId: paymentMethod.id,
+        //   clientSecret: clientSecret,
+        // });
+
+        // Handle successful payment submission
+        console.log(data);
+      } catch (error) {
+        // Handle error
+        console.error('Error submitting payment:', error);
+        setError("Failed to process payment. Please try again later.");
+      }
+    }
+  };
+
+
   return (
-    <form>
-      <h3>Contact info</h3>
-      <LinkAuthenticationElement
-        // Optional prop for prefilling customer information
-        options={{
-          defaultValues: {
-            email: 'foo@bar.com',
-          },
-        }}
-      />
+    <form onSubmit={handleSubmit}>
       <h3>Payment</h3>
       <PaymentElement
+        id="payment"
         // Optional prop for prefilling customer information
         options={{
           defaultValues: {
@@ -45,7 +79,7 @@ function CheckoutForm() {
             },
           },
         }}
-      />;
+      />
       <button type="submit">Submit</button>
     </form>
   );
